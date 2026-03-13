@@ -216,6 +216,17 @@ public class OpenOfficePanel {
     }
 
     private void initPanel() {
+        configureConnectionButtons();
+        configureStyleSelection();
+        configureCitationButtons();
+        configureBibliographyActions();
+        configureSettingsActions();
+        buildLayout();
+
+        updateButtonAvailability();
+    }
+
+    private void configureConnectionButtons() {
         connect.setOnAction(_ -> connectAutomatically());
         manualConnect.setOnAction(_ -> connectManually());
 
@@ -223,49 +234,64 @@ public class OpenOfficePanel {
         selectDocument.setOnAction(_ -> {
             try {
                 ooBase.guiActionSelectDocument(false);
-            } catch (WrappedTargetException
-                     | NoSuchElementException ex) {
+            } catch (WrappedTargetException | NoSuchElementException ex) {
                 throw new RuntimeException(ex);
             }
         });
+    }
 
+    private void configureStyleSelection() {
         setStyleFile.setMaxWidth(Double.MAX_VALUE);
         setStyleFile.setOnAction(_ -> {
-            StyleSelectDialogView styleDialog = new StyleSelectDialogView(cslStyleLoader, jStyleLoader, journalAbbreviationRepository);
+            StyleSelectDialogView styleDialog = new StyleSelectDialogView(
+                    cslStyleLoader,
+                    jStyleLoader,
+                    journalAbbreviationRepository
+            );
+
             dialogService.showCustomDialogAndWait(styleDialog)
-                         .ifPresent(selectedStyle -> {
-                             currentStyle = selectedStyle;
-                             currentStyleProperty.set(currentStyle);
-
-                             if (currentStyle instanceof JStyle jStyle) {
-                                 try {
-                                     jStyle.ensureUpToDate();
-                                 } catch (IOException e) {
-                                     LOGGER.warn("Unable to reload style file '{}'", jStyle.getPath(), e);
-                                 }
-                                 dialogService.notify(Localization.lang("Currently selected JStyle: '%0'", jStyle.getName()));
-                             } else if (currentStyle instanceof CitationStyle cslStyle) {
-                                 dialogService.notify(Localization.lang("Currently selected CSL Style: '%0'", cslStyle.getName()));
-                             }
-                             updateButtonAvailability();
-                         });
+                         .ifPresent(this::handleStyleSelection);
         });
+    }
 
+    private void handleStyleSelection(OOStyle selectedStyle) {
+        currentStyle = selectedStyle;
+        currentStyleProperty.set(currentStyle);
+
+        if (currentStyle instanceof JStyle jStyle) {
+            try {
+                jStyle.ensureUpToDate();
+            } catch (IOException e) {
+                LOGGER.warn("Unable to reload style file '{}'", jStyle.getPath(), e);
+            }
+            dialogService.notify(Localization.lang("Currently selected JStyle: '%0'", jStyle.getName()));
+        } else if (currentStyle instanceof CitationStyle cslStyle) {
+            dialogService.notify(Localization.lang("Currently selected CSL Style: '%0'", cslStyle.getName()));
+        }
+
+        updateButtonAvailability();
+    }
+
+    private void configureCitationButtons() {
         pushEntries.setTooltip(new Tooltip(Localization.lang("Cite selected entries between parenthesis")));
         pushEntries.setOnAction(_ -> pushEntries(CitationType.AUTHORYEAR_PAR, false));
         pushEntries.setMaxWidth(Double.MAX_VALUE);
+
         pushEntriesInt.setTooltip(new Tooltip(Localization.lang("Cite selected entries with in-text citation")));
         pushEntriesInt.setOnAction(_ -> pushEntries(CitationType.AUTHORYEAR_INTEXT, false));
         pushEntriesInt.setMaxWidth(Double.MAX_VALUE);
+
         pushEntriesEmpty.setTooltip(new Tooltip(Localization.lang("Insert a citation without text (the entry will appear in the reference list)")));
         pushEntriesEmpty.setOnAction(_ -> pushEntries(CitationType.INVISIBLE_CIT, false));
         pushEntriesEmpty.setMaxWidth(Double.MAX_VALUE);
+
         pushEntriesAdvanced.setTooltip(new Tooltip(Localization.lang("Cite selected entries with extra information")));
         pushEntriesAdvanced.setOnAction(_ -> pushEntries(CitationType.AUTHORYEAR_INTEXT, true));
         pushEntriesAdvanced.setMaxWidth(Double.MAX_VALUE);
+    }
 
+    private void configureBibliographyActions() {
         update.setTooltip(new Tooltip(Localization.lang("Make/Sync bibliography")));
-
         update.setOnAction(_ -> {
             String title = Localization.lang("Could not update bibliography");
             if (getOrUpdateTheStyle(title)) {
@@ -282,11 +308,15 @@ public class OpenOfficePanel {
         unmerge.setMaxWidth(Double.MAX_VALUE);
         unmerge.setTooltip(new Tooltip(Localization.lang("Separate merged citations")));
         unmerge.setOnAction(_ -> ooBase.guiActionSeparateCitations(getBaseList(), currentStyle));
+    }
 
+    private void configureSettingsActions() {
         ContextMenu settingsMenu = createSettingsPopup();
+
         settingsB.setMaxWidth(Double.MAX_VALUE);
         settingsB.setContextMenu(settingsMenu);
         settingsB.setOnAction(_ -> settingsMenu.show(settingsB, Side.BOTTOM, 0, 0));
+
         manageCitations.setMaxWidth(Double.MAX_VALUE);
         manageCitations.setOnAction(_ -> {
             ManageCitationsDialogView dialog = new ManageCitationsDialogView(ooBase);
@@ -300,9 +330,9 @@ public class OpenOfficePanel {
 
         exportCitations.setMaxWidth(Double.MAX_VALUE);
         exportCitations.setOnAction(_ -> exportEntries());
+    }
 
-        updateButtonAvailability();
-
+    private void buildLayout() {
         HBox hbox = new HBox();
         hbox.getChildren().addAll(connect, manualConnect, selectDocument, update, help);
         hbox.getChildren().forEach(btn -> HBox.setHgrow(btn, Priority.ALWAYS));
@@ -312,6 +342,7 @@ public class OpenOfficePanel {
         flow.setVgap(4);
         flow.setHgap(4);
         flow.setPrefWrapLength(200);
+
         flow.getChildren().addAll(setStyleFile, pushEntries, pushEntriesInt);
         flow.getChildren().addAll(pushEntriesAdvanced, pushEntriesEmpty, merge, unmerge);
         flow.getChildren().addAll(manageCitations, exportCitations, modifyBibliographyProperties, settingsB);
