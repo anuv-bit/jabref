@@ -105,7 +105,7 @@ public class OOBibBase {
         } catch (WrappedTargetException
                  | IndexOutOfBoundsException
                  | NoSuchElementException ex) {
-            LOGGER.warn("Problem connecting", ex);
+            LOGGER.warn(errorTitle, ex);
             OOError.fromMisc(ex).setTitle(errorTitle).showErrorDialog(dialogService);
         }
 
@@ -732,7 +732,7 @@ public class OOBibBase {
                      | PropertyVetoException
                      | WrappedTargetException
                      | com.sun.star.lang.IllegalArgumentException ex) {
-                LOGGER.warn("Problem combining cite markers", ex);
+                LOGGER.warn(errorTitle, ex);
                 OOError.fromMisc(ex).setTitle(errorTitle).showErrorDialog(dialogService);
             } finally {
                 UnoUndo.leaveUndoContext(doc);
@@ -786,7 +786,7 @@ public class OOBibBase {
                      | PropertyVetoException
                      | WrappedTargetException
                      | com.sun.star.lang.IllegalArgumentException ex) {
-                LOGGER.warn("Problem during separating cite markers", ex);
+                LOGGER.warn(errorTitle, ex);
                 OOError.fromMisc(ex).setTitle(errorTitle).showErrorDialog(dialogService);
             } finally {
                 UnoUndo.leaveUndoContext(doc);
