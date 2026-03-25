@@ -826,7 +826,7 @@ public class OOBibBase {
 
             if (!result.newDatabase.hasEntries()) {
                 dialogService.showErrorDialogAndWait(
-                        Localization.lang("Unable to generate new library"),
+                        Localization.lang(errorTitle),
                         Localization.lang("Your OpenOffice/LibreOffice document references"
                                 + " no citation keys"
                                 + " which could also be found in your current library."));
@@ -836,7 +836,7 @@ public class OOBibBase {
             List<String> unresolvedKeys = result.unresolvedKeys;
             if (!unresolvedKeys.isEmpty()) {
                 dialogService.showErrorDialogAndWait(
-                        Localization.lang("Unable to generate new library"),
+                        Localization.lang(errorTitle),
                         Localization.lang("Your OpenOffice/LibreOffice document references"
                                         + " at least %0 citation keys"
                                         + " which could not be found in your current library."
@@ -936,7 +936,9 @@ public class OOBibBase {
     /// Helper method for guiActionUpdateDocument, refreshes the bibliography.
     ///
     /// @param databases Must have at least one.
-    private void refreshBibliography(List<BibDatabase> databases, JStyle jStyle, XTextDocument doc, OOFrontend frontend, OOResult<FunctionalTextViewCursor, OOError> fcursor, String errorTitle) throws CreationException, NoDocumentException, WrappedTargetException {
+    private void refreshBibliography(List<BibDatabase> databases, JStyle jStyle, XTextDocument doc, OOFrontend frontend,
+                                     OOResult<FunctionalTextViewCursor, OOError> fcursor, String errorTitle)
+            throws CreationException, NoDocumentException, WrappedTargetException {
         List<String> unresolvedKeys;
         try {
             UnoUndo.enterUndoContext(doc, "Refresh bibliography");
