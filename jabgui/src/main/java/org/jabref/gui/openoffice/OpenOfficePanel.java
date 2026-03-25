@@ -365,6 +365,9 @@ public class OpenOfficePanel {
     private void connectAutomatically() {
         DetectOpenOfficeInstallation officeInstallation = new DetectOpenOfficeInstallation(openOfficePreferences, dialogService);
 
+        final String autodetectionFailedError = Localization.lang("Autodetection failed");
+        final String autodetectionProgressMSG = Localization.lang("Autodetecting paths...");
+
         if (officeInstallation.isExecutablePathDefined()) {
             connect();
         } else {
@@ -386,9 +389,9 @@ public class OpenOfficePanel {
                 }
             });
 
-            taskConnectIfInstalled.setOnFailed(_ -> dialogService.showErrorDialogAndWait(Localization.lang("Autodetection failed"), Localization.lang("Autodetection failed"), taskConnectIfInstalled.getException()));
+            taskConnectIfInstalled.setOnFailed(_ -> dialogService.showErrorDialogAndWait(autodetectionFailedError, autodetectionFailedError, taskConnectIfInstalled.getException()));
 
-            dialogService.showProgressDialog(Localization.lang("Autodetecting paths..."), Localization.lang("Autodetecting paths..."), taskConnectIfInstalled);
+            dialogService.showProgressDialog(autodetectionProgressMSG, autodetectionProgressMSG, taskConnectIfInstalled);
             taskExecutor.execute(taskConnectIfInstalled);
         }
     }
@@ -396,6 +399,9 @@ public class OpenOfficePanel {
     private void connectManually() {
         DirectoryDialogConfiguration fileDialogConfiguration = new DirectoryDialogConfiguration.Builder().withInitialDirectory(System.getProperty("user.home")).build();
         Optional<Path> selectedPath = dialogService.showDirectorySelectionDialog(fileDialogConfiguration);
+
+        final String connectionErrorTitle = Localization.lang("Could not connect to running OpenOffice/LibreOffice.");
+        final String extendedConnectionErrorTitle = Localization.lang("If connecting manually, please verify program and library paths.");
 
         DetectOpenOfficeInstallation officeInstallation = new DetectOpenOfficeInstallation(openOfficePreferences, dialogService);
 
@@ -406,12 +412,12 @@ public class OpenOfficePanel {
                               if (value) {
                                   connect();
                               } else {
-                                  dialogService.showErrorDialogAndWait(Localization.lang("Could not connect to running OpenOffice/LibreOffice."), Localization.lang("If connecting manually, please verify program and library paths."));
+                                  dialogService.showErrorDialogAndWait(connectionErrorTitle, extendedConnectionErrorTitle);
                               }
                           })
                           .executeWith(taskExecutor);
         } else {
-            dialogService.showErrorDialogAndWait(Localization.lang("Could not connect to running OpenOffice/LibreOffice."), Localization.lang("If connecting manually, please verify program and library paths."));
+            dialogService.showErrorDialogAndWait(connectionErrorTitle, extendedConnectionErrorTitle);
         }
     }
 
@@ -440,6 +446,11 @@ public class OpenOfficePanel {
     }
 
     private void connect() {
+        final String connectionErrorTitle = Localization.lang("Could not connect to running OpenOffice/LibreOffice.");
+        final String autodetectionFailedError = Localization.lang("Autodetection failed");
+        final String autodetectionProgressMSG = Localization.lang("Autodetecting paths...");
+        final String connectionLoggerTitle = "Could not connect to running OpenOffice/LibreOffice";
+
         Task<OOBibBase> connectTask = new Task<>() {
             @Override
             protected OOBibBase call() throws BootstrapException, CreationException, IOException, InterruptedException {
@@ -469,16 +480,16 @@ public class OpenOfficePanel {
             LOGGER.error("autodetect failed", ex);
             switch (ex) {
                 case UnsatisfiedLinkError unsatisfiedLinkError -> {
-                    LOGGER.warn("Could not connect to running OpenOffice/LibreOffice", unsatisfiedLinkError);
+                    LOGGER.warn(connectionLoggerTitle, unsatisfiedLinkError);
 
                     dialogService.showErrorDialogAndWait(Localization.lang("Unable to connect. One possible reason is that JabRef "
                             + "and OpenOffice/LibreOffice are not both running in either 32 bit mode or 64 bit mode."));
                 }
                 case IOException ioException -> {
-                    LOGGER.warn("Could not connect to running OpenOffice/LibreOffice", ioException);
+                    LOGGER.warn(connectionLoggerTitle, ioException);
 
-                    dialogService.showErrorDialogAndWait(Localization.lang("Could not connect to running OpenOffice/LibreOffice."),
-                            Localization.lang("Could not connect to running OpenOffice/LibreOffice.")
+                    dialogService.showErrorDialogAndWait(connectionErrorTitle,
+                            connectionErrorTitle
                                     + "\n"
                                     + Localization.lang("Make sure you have installed OpenOffice/LibreOffice with Java support.") + "\n"
                                     + Localization.lang("If connecting manually, please verify program and library paths.") + "\n" + "\n" + Localization.lang("Error message:"),
@@ -490,11 +501,11 @@ public class OpenOfficePanel {
                 }
                 case null,
                      default ->
-                        dialogService.showErrorDialogAndWait(Localization.lang("Autodetection failed"), Localization.lang("Autodetection failed"), ex);
+                        dialogService.showErrorDialogAndWait(autodetectionFailedError, autodetectionFailedError, ex);
             }
         });
 
-        dialogService.showProgressDialog(Localization.lang("Autodetecting paths..."), Localization.lang("Autodetecting paths..."), connectTask);
+        dialogService.showProgressDialog(autodetectionProgressMSG, autodetectionProgressMSG, connectTask);
         taskExecutor.execute(connectTask);
     }
 
