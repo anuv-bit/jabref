@@ -366,7 +366,7 @@ public class OpenOfficePanel {
         DetectOpenOfficeInstallation officeInstallation = new DetectOpenOfficeInstallation(openOfficePreferences, dialogService);
 
         final String autodetectionFailedError = Localization.lang("Autodetection failed");
-        final String autodetectionProgressMSG = Localization.lang("Autodetecting paths...");
+        final String autodetectionProgressMessage = Localization.lang("Autodetecting paths...");
 
         if (officeInstallation.isExecutablePathDefined()) {
             connect();
@@ -391,7 +391,7 @@ public class OpenOfficePanel {
 
             taskConnectIfInstalled.setOnFailed(_ -> dialogService.showErrorDialogAndWait(autodetectionFailedError, autodetectionFailedError, taskConnectIfInstalled.getException()));
 
-            dialogService.showProgressDialog(autodetectionProgressMSG, autodetectionProgressMSG, taskConnectIfInstalled);
+            dialogService.showProgressDialog(autodetectionProgressMessage, autodetectionProgressMessage, taskConnectIfInstalled);
             taskExecutor.execute(taskConnectIfInstalled);
         }
     }
@@ -400,8 +400,8 @@ public class OpenOfficePanel {
         DirectoryDialogConfiguration fileDialogConfiguration = new DirectoryDialogConfiguration.Builder().withInitialDirectory(System.getProperty("user.home")).build();
         Optional<Path> selectedPath = dialogService.showDirectorySelectionDialog(fileDialogConfiguration);
 
-        final String connectionErrorTitle = Localization.lang("Could not connect to running OpenOffice/LibreOffice.");
-        final String extendedConnectionErrorTitle = Localization.lang("If connecting manually, please verify program and library paths.");
+        final String connectionError = Localization.lang("Could not connect to running OpenOffice/LibreOffice.");
+        final String extendedConnectionError = Localization.lang("If connecting manually, please verify program and library paths.");
 
         DetectOpenOfficeInstallation officeInstallation = new DetectOpenOfficeInstallation(openOfficePreferences, dialogService);
 
@@ -412,12 +412,12 @@ public class OpenOfficePanel {
                               if (value) {
                                   connect();
                               } else {
-                                  dialogService.showErrorDialogAndWait(connectionErrorTitle, extendedConnectionErrorTitle);
+                                  dialogService.showErrorDialogAndWait(connectionError, extendedConnectionError);
                               }
                           })
                           .executeWith(taskExecutor);
         } else {
-            dialogService.showErrorDialogAndWait(connectionErrorTitle, extendedConnectionErrorTitle);
+            dialogService.showErrorDialogAndWait(connectionError, extendedConnectionError);
         }
     }
 
@@ -446,10 +446,10 @@ public class OpenOfficePanel {
     }
 
     private void connect() {
-        final String connectionErrorTitle = Localization.lang("Could not connect to running OpenOffice/LibreOffice.");
+        final String connectionError = Localization.lang("Could not connect to running OpenOffice/LibreOffice.");
         final String autodetectionFailedError = Localization.lang("Autodetection failed");
-        final String autodetectionProgressMSG = Localization.lang("Autodetecting paths...");
-        final String connectionLoggerTitle = "Could not connect to running OpenOffice/LibreOffice";
+        final String autodetectionProgressMessage = Localization.lang("Autodetecting paths...");
+        final String connectionLoggerMessage = "Could not connect to running OpenOffice/LibreOffice";
 
         Task<OOBibBase> connectTask = new Task<>() {
             @Override
@@ -480,16 +480,16 @@ public class OpenOfficePanel {
             LOGGER.error("autodetect failed", ex);
             switch (ex) {
                 case UnsatisfiedLinkError unsatisfiedLinkError -> {
-                    LOGGER.warn(connectionLoggerTitle, unsatisfiedLinkError);
+                    LOGGER.warn(connectionLoggerMessage, unsatisfiedLinkError);
 
                     dialogService.showErrorDialogAndWait(Localization.lang("Unable to connect. One possible reason is that JabRef "
                             + "and OpenOffice/LibreOffice are not both running in either 32 bit mode or 64 bit mode."));
                 }
                 case IOException ioException -> {
-                    LOGGER.warn(connectionLoggerTitle, ioException);
+                    LOGGER.warn(connectionLoggerMessage, ioException);
 
-                    dialogService.showErrorDialogAndWait(connectionErrorTitle,
-                            connectionErrorTitle
+                    dialogService.showErrorDialogAndWait(connectionError,
+                            connectionError
                                     + "\n"
                                     + Localization.lang("Make sure you have installed OpenOffice/LibreOffice with Java support.") + "\n"
                                     + Localization.lang("If connecting manually, please verify program and library paths.") + "\n" + "\n" + Localization.lang("Error message:"),
@@ -505,7 +505,7 @@ public class OpenOfficePanel {
             }
         });
 
-        dialogService.showProgressDialog(autodetectionProgressMSG, autodetectionProgressMSG, connectTask);
+        dialogService.showProgressDialog(autodetectionProgressMessage, autodetectionProgressMessage, connectTask);
         taskExecutor.execute(connectTask);
     }
 
@@ -527,13 +527,13 @@ public class OpenOfficePanel {
     }
 
     private void pushEntries(CitationType citationType, boolean addPageInfo) {
-        final String errorDialogTitle = Localization.lang("Error pushing entries");
+        final String dialogError = Localization.lang("Error pushing entries");
 
         final Optional<BibDatabaseContext> activeDatabase = stateManager.getActiveDatabase();
 
         if (activeDatabase.isEmpty() || (activeDatabase.get().getDatabase() == null)) {
             OOError.noDataBaseIsOpenForCiting()
-                   .setTitle(errorDialogTitle)
+                   .setTitle(dialogError)
                    .showErrorDialog(dialogService);
             return;
         }
@@ -544,12 +544,12 @@ public class OpenOfficePanel {
 
         if (entries.isEmpty()) {
             OOError.noEntriesSelectedForCitation()
-                   .setTitle(errorDialogTitle)
+                   .setTitle(dialogError)
                    .showErrorDialog(dialogService);
             return;
         }
 
-        if (getOrUpdateTheStyle(errorDialogTitle)) {
+        if (getOrUpdateTheStyle(dialogError)) {
             return;
         }
 
