@@ -539,7 +539,7 @@ public class OOBibBase {
 
         OOResult<XTextCursor, OOError> cursor = getUserCursorForTextInsertion(doc, errorTitle);
 
-        if (!preGuiActionInsertEntryTestDialog(entries, errorTitle, odoc, style, frontend, cursor, doc)) {
+        if (!performPreInsertionChecks(entries, errorTitle, odoc, style, frontend, cursor, doc)) {
             return;
         }
 
@@ -562,10 +562,10 @@ public class OOBibBase {
             UnoUndo.enterUndoContext(doc, "Insert citation");
             if (style instanceof CitationStyle citationStyle) {
                 // Handle insertion of CSL Style citations
-                guiActionCSLCitationHandler(entries, doc, citationType, citationStyle, bibDatabaseContext, bibEntryTypesManager, cursor, syncOptions);
+                insertCSLCitation(entries, doc, citationType, citationStyle, bibDatabaseContext, bibEntryTypesManager, cursor, syncOptions);
             } else if (style instanceof JStyle jStyle) {
                 // Handle insertion of JStyle citations
-                guiActionJStyleCitationHandler(entries, doc, citationType, jStyle, frontend, cursor, bibDatabaseContext, syncOptions, pageInfo, fcursor);
+                resyncJStyleCitations(entries, doc, citationType, jStyle, frontend, cursor, bibDatabaseContext, syncOptions, pageInfo, fcursor);
             }
         } catch (NoDocumentException ex) {
             OOError.from(ex).setTitle(errorTitle).showErrorDialog(dialogService);
@@ -594,8 +594,8 @@ public class OOBibBase {
     /// @param frontend   Open Office result of Open Office frontend
     /// @param cursor     Open Office result of text cursor
     /// @param doc        Text document
-    public boolean preGuiActionInsertEntryTestDialog(List<BibEntry> entries, String errorTitle, OOResult<XTextDocument, OOError> odoc, OOStyle style,
-                                                     OOResult<OOFrontend, OOError> frontend, OOResult<XTextCursor, OOError> cursor, XTextDocument doc) {
+    public boolean performPreInsertionChecks(List<BibEntry> entries, String errorTitle, OOResult<XTextDocument, OOError> odoc, OOStyle style,
+                                             OOResult<OOFrontend, OOError> frontend, OOResult<XTextCursor, OOError> cursor, XTextDocument doc) {
         if (testDialog(errorTitle,
                 odoc.asVoidResult(),
                 styleIsRequired(style),
@@ -632,9 +632,9 @@ public class OOBibBase {
     /// @param citationType       Indicates whether it is an in-text citation, a citation in parenthesis or an invisible citation.
     /// @param citationStyle      Indicates style, name and path of citation
     /// @param syncOptions        Indicates whether in-text citations should be refreshed in the document. Optional.empty() indicates no refresh. Otherwise, provides options for refreshing the reference list.
-    public void guiActionCSLCitationHandler(List<BibEntry> entries, XTextDocument doc, CitationType citationType, CitationStyle citationStyle,
-                                            BibDatabaseContext bibDatabaseContext, BibEntryTypesManager bibEntryTypesManager, OOResult<XTextCursor, OOError> cursor,
-                                            Optional<Update.SyncOptions> syncOptions) throws CreationException, com.sun.star.uno.Exception {
+    public void insertCSLCitation(List<BibEntry> entries, XTextDocument doc, CitationType citationType, CitationStyle citationStyle,
+                                  BibDatabaseContext bibDatabaseContext, BibEntryTypesManager bibEntryTypesManager, OOResult<XTextCursor, OOError> cursor,
+                                  Optional<Update.SyncOptions> syncOptions) throws CreationException, com.sun.star.uno.Exception {
         try {
             // Lock document controllers - disable refresh during the process (avoids document flicker during writing)
             // MUST always be paired with an unlockControllers() call
@@ -666,14 +666,14 @@ public class OOBibBase {
     /// Exceptions caught by guiActionInsertEntry
     ///
     /// @param entries            The entries to cite.
-    /// @param citationType       Indicates whether it is an in-text citation, a citation in parenthesis or an invisible citation.
+    /// @param citationType       Indicates whether it is an in-text citation, a citation in parentheses or an invisible citation.
     /// @param jStyle             Indicates citation formating in JStyle
     /// @param bibDatabaseContext The database the entries belong to (all of them). Used when creating the citation mark.
     /// @param syncOptions        Indicates whether in-text citations should be refreshed in the document. Optional.empty() indicates no refresh. Otherwise, provides options for refreshing the reference list.
     /// @param pageInfo           A single page-info for these entries. Attributed to the last entry.
-    public void guiActionJStyleCitationHandler(List<BibEntry> entries, XTextDocument doc, CitationType citationType, JStyle jStyle, OOResult<OOFrontend, OOError> frontend,
-                                               OOResult<XTextCursor, OOError> cursor, BibDatabaseContext bibDatabaseContext, Optional<Update.SyncOptions> syncOptions,
-                                               String pageInfo, OOResult<FunctionalTextViewCursor, OOError> fcursor)
+    public void resyncJStyleCitations(List<BibEntry> entries, XTextDocument doc, CitationType citationType, JStyle jStyle, OOResult<OOFrontend, OOError> frontend,
+                                      OOResult<XTextCursor, OOError> cursor, BibDatabaseContext bibDatabaseContext, Optional<Update.SyncOptions> syncOptions,
+                                      String pageInfo, OOResult<FunctionalTextViewCursor, OOError> fcursor)
             throws PropertyVetoException, WrappedTargetException, IllegalTypeException, NotRemoveableException, CreationException, NoDocumentException {
         EditInsert.insertCitationGroup(doc,
                 frontend.get(),
@@ -935,7 +935,11 @@ public class OOBibBase {
 
     /// Helper method for guiActionUpdateDocument, refreshes the bibliography.
     ///
-    /// @param databases Must have at least one.
+    /// @param databases        Must have at least one.
+    /// @param jStyle           Indicates citation formating in JStyle.
+    /// @param doc              Text document.
+    /// @param frontend,fcursor Used to synchronize document.
+    /// @param errorTitle       Error message for user.
     private void refreshBibliography(List<BibDatabase> databases, JStyle jStyle, XTextDocument doc, OOFrontend frontend,
                                      OOResult<FunctionalTextViewCursor, OOError> fcursor, String errorTitle)
             throws CreationException, NoDocumentException, WrappedTargetException {
@@ -965,8 +969,13 @@ public class OOBibBase {
 
     /// Helper method for guiActionUpdateDocument, creates a CSL bibliography.
     ///
-    /// @param databases Must have at least one.
-    private void createCSLBibliography(List<BibDatabase> databases, CitationStyle citationStyle, XTextDocument doc, OOResult<FunctionalTextViewCursor, OOError> fcursor) throws CreationException {
+    /// @param databases     Must have at least one.
+    /// @param citationStyle Citation style to update bibliography with.
+    /// @param doc           Text document.
+    /// @param fcursor       Used to synchronize document.
+    private void createCSLBibliography(List<BibDatabase> databases, CitationStyle citationStyle, XTextDocument doc,
+                                       OOResult<FunctionalTextViewCursor, OOError> fcursor)
+            throws CreationException {
         try {
             UnoUndo.enterUndoContext(doc, "Create CSL bibliography");
 
