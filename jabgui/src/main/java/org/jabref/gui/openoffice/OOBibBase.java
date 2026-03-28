@@ -565,7 +565,7 @@ public class OOBibBase {
                 insertCSLCitation(entries, doc, citationType, citationStyle, bibDatabaseContext, bibEntryTypesManager, cursor, syncOptions);
             } else if (style instanceof JStyle jStyle) {
                 // Handle insertion of JStyle citations
-                resyncJStyleCitations(entries, doc, citationType, jStyle, frontend, cursor, bibDatabaseContext, syncOptions, pageInfo, fcursor);
+                insertJStyleCitation(entries, doc, citationType, jStyle, frontend, cursor, bibDatabaseContext, syncOptions, pageInfo, fcursor);
             }
         } catch (NoDocumentException ex) {
             OOError.from(ex).setTitle(errorTitle).showErrorDialog(dialogService);
@@ -671,9 +671,9 @@ public class OOBibBase {
     /// @param bibDatabaseContext The database the entries belong to (all of them). Used when creating the citation mark.
     /// @param syncOptions        Indicates whether in-text citations should be refreshed in the document. Optional.empty() indicates no refresh. Otherwise, provides options for refreshing the reference list.
     /// @param pageInfo           A single page-info for these entries. Attributed to the last entry.
-    public void resyncJStyleCitations(List<BibEntry> entries, XTextDocument doc, CitationType citationType, JStyle jStyle, OOResult<OOFrontend, OOError> frontend,
-                                      OOResult<XTextCursor, OOError> cursor, BibDatabaseContext bibDatabaseContext, Optional<Update.SyncOptions> syncOptions,
-                                      String pageInfo, OOResult<FunctionalTextViewCursor, OOError> fcursor)
+    public void insertJStyleCitation(List<BibEntry> entries, XTextDocument doc, CitationType citationType, JStyle jStyle, OOResult<OOFrontend, OOError> frontend,
+                                     OOResult<XTextCursor, OOError> cursor, BibDatabaseContext bibDatabaseContext, Optional<Update.SyncOptions> syncOptions,
+                                     String pageInfo, OOResult<FunctionalTextViewCursor, OOError> fcursor)
             throws PropertyVetoException, WrappedTargetException, IllegalTypeException, NotRemoveableException, CreationException, NoDocumentException {
         EditInsert.insertCitationGroup(doc,
                 frontend.get(),
@@ -868,33 +868,20 @@ public class OOBibBase {
     /// @param style     Style.
     public void guiActionUpdateDocument(List<BibDatabase> databases, OOStyle style) {
         final String errorTitle = Localization.lang("Unable to synchronize bibliography");
+
+        OOResult<XTextDocument, OOError> odoc = getXTextDocument();
+        XTextDocument doc = odoc.get();
+        OOResult<FunctionalTextViewCursor, OOError> fcursor = getFunctionalTextViewCursor(doc, errorTitle);
+        OOResult<OOFrontend, OOError> frontend = getFrontend(doc);
+
+        if (!performPreUpdateChecks(errorTitle, odoc, style, getFrontend(doc), fcursor, doc)) {
+            return;
+        }
+
         if (style instanceof JStyle jStyle) {
             try {
 
-                OOResult<XTextDocument, OOError> odoc = getXTextDocument();
-                if (testDialog(errorTitle,
-                        odoc.asVoidResult(),
-                        styleIsRequired(jStyle))) {
-                    return;
-                }
-
-                XTextDocument doc = odoc.get();
-
-                OOResult<FunctionalTextViewCursor, OOError> fcursor = getFunctionalTextViewCursor(doc, errorTitle);
-
-                if (testDialog(errorTitle,
-                        fcursor.asVoidResult(),
-                        checkStylesExistInTheDocument(jStyle, doc),
-                        checkIfOpenOfficeIsRecordingChanges(doc))) {
-                    return;
-                }
-
-                OOFrontend frontend = new OOFrontend(doc);
-                if (testDialog(errorTitle, checkRangeOverlaps(doc, frontend))) {
-                    return;
-                }
-
-                refreshBibliography(databases, jStyle, doc, frontend, fcursor, errorTitle);
+                updateJStyleBibliography(databases, jStyle, doc, frontend.get(), fcursor, errorTitle);
             } catch (NoDocumentException ex) {
                 OOError.from(ex).setTitle(errorTitle).showErrorDialog(dialogService);
             } catch (DisposedException ex) {
@@ -910,22 +897,8 @@ public class OOBibBase {
                 return;
             }
             try {
-                OOResult<XTextDocument, OOError> odoc = getXTextDocument();
-                if (testDialog(errorTitle, odoc.asVoidResult())) {
-                    return;
-                }
 
-                XTextDocument doc = odoc.get();
-
-                OOResult<FunctionalTextViewCursor, OOError> fcursor = getFunctionalTextViewCursor(doc, errorTitle);
-
-                if (testDialog(errorTitle,
-                        fcursor.asVoidResult(),
-                        checkIfOpenOfficeIsRecordingChanges(doc))) {
-                    return;
-                }
-
-                createCSLBibliography(databases, citationStyle, doc, fcursor);
+                updateCSLBibliography(databases, citationStyle, doc, fcursor);
             } catch (CreationException | com.sun.star.lang.IllegalArgumentException ex) {
                 LOGGER.error("Could not update CSL bibliography", ex);
                 OOError.fromMisc(ex).setTitle(errorTitle).showErrorDialog(dialogService);
@@ -933,15 +906,49 @@ public class OOBibBase {
         }
     }
 
-    /// Helper method for guiActionUpdateDocument, refreshes the bibliography.
+    /// Helper method for guiActionUpdateDocument. Handles pre-update checks
+    ///
+    /// @param style      The bibliography style we are using.
+    /// @param errorTitle Message String of error
+    /// @param odoc       Open Office text document result
+    /// @param frontend   Open Office result of Open Office frontend
+    /// @param fcursor    Open Office result of text cursor
+    /// @param doc        Text document
+    public boolean performPreUpdateChecks(String errorTitle, OOResult<XTextDocument, OOError> odoc, OOStyle style,
+                                          OOResult<OOFrontend, OOError> frontend, OOResult<FunctionalTextViewCursor, OOError> fcursor, XTextDocument doc) {
+        if (testDialog(errorTitle,
+                odoc.asVoidResult(),
+                styleIsRequired(style))) {
+            return false;
+        }
+
+        if (testDialog(errorTitle,
+                fcursor.asVoidResult(),
+                checkIfOpenOfficeIsRecordingChanges(doc))) {
+            return false;
+        }
+
+        if (testDialog(errorTitle, checkRangeOverlaps(doc, frontend.get()))) {
+            return false;
+        }
+
+        if (style instanceof JStyle jStyle) {
+            return !testDialog(errorTitle,
+                    checkStylesExistInTheDocument(jStyle, doc),
+                    checkIfOpenOfficeIsRecordingChanges(doc));
+        }
+        return true;
+    }
+
+    /// Helper method for guiActionUpdateDocument, refreshes a JStyle bibliography.
     ///
     /// @param databases        Must have at least one.
     /// @param jStyle           Indicates citation formating in JStyle.
     /// @param doc              Text document.
     /// @param frontend,fcursor Used to synchronize document.
     /// @param errorTitle       Error message for user.
-    private void refreshBibliography(List<BibDatabase> databases, JStyle jStyle, XTextDocument doc, OOFrontend frontend,
-                                     OOResult<FunctionalTextViewCursor, OOError> fcursor, String errorTitle)
+    private void updateJStyleBibliography(List<BibDatabase> databases, JStyle jStyle, XTextDocument doc, OOFrontend frontend,
+                                          OOResult<FunctionalTextViewCursor, OOError> fcursor, String errorTitle)
             throws CreationException, NoDocumentException, WrappedTargetException {
         List<String> unresolvedKeys;
         try {
@@ -967,13 +974,13 @@ public class OOBibBase {
         }
     }
 
-    /// Helper method for guiActionUpdateDocument, creates a CSL bibliography.
+    /// Helper method for guiActionUpdateDocument, refreshes a CSL bibliography.
     ///
     /// @param databases     Must have at least one.
     /// @param citationStyle Citation style to update bibliography with.
     /// @param doc           Text document.
     /// @param fcursor       Used to synchronize document.
-    private void createCSLBibliography(List<BibDatabase> databases, CitationStyle citationStyle, XTextDocument doc,
+    private void updateCSLBibliography(List<BibDatabase> databases, CitationStyle citationStyle, XTextDocument doc,
                                        OOResult<FunctionalTextViewCursor, OOError> fcursor)
             throws CreationException {
         try {
