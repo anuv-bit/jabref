@@ -94,19 +94,19 @@ public class OOBibBase {
     }
 
     public void guiActionSelectDocument(boolean autoSelectForSingle) throws WrappedTargetException, NoSuchElementException {
-        final String connectionError = Localization.lang("Problem connecting");
+        final String errorTitle = Localization.lang("Problem connecting");
 
         try {
             connection.selectDocument(autoSelectForSingle);
         } catch (NoDocumentFoundException ex) {
             OOError.from(ex).showErrorDialog(dialogService);
         } catch (DisposedException ex) {
-            OOError.from(ex).setTitle(connectionError).showErrorDialog(dialogService);
+            OOError.from(ex).setTitle(errorTitle).showErrorDialog(dialogService);
         } catch (WrappedTargetException
                  | IndexOutOfBoundsException
                  | NoSuchElementException ex) {
-            LOGGER.warn(connectionError, ex);
-            OOError.fromMisc(ex).setTitle(connectionError).showErrorDialog(dialogService);
+            LOGGER.warn(errorTitle, ex);
+            OOError.fromMisc(ex).setTitle(errorTitle).showErrorDialog(dialogService);
         }
 
         if (isConnectedToDocument()) {
