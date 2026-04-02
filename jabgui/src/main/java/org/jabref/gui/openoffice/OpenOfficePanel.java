@@ -110,7 +110,9 @@ public class OpenOfficePanel {
     private final LibraryTabContainer tabContainer;
     private final FileUpdateMonitor fileUpdateMonitor;
     private final BibEntryTypesManager entryTypesManager;
-    private OOBibBase ooBase;
+    private OOBibBase ooBase;  // GET RID OF ************************************
+    private OOJStyleBase ooJStyleBase;
+    private OOCSLBase ooCSLBase;
     private OOStyle currentStyle;
 
     private final SimpleObjectProperty<OOStyle> currentStyleProperty;
@@ -278,7 +280,7 @@ public class OpenOfficePanel {
 
         merge.setMaxWidth(Double.MAX_VALUE);
         merge.setTooltip(new Tooltip(Localization.lang("Combine pairs of citations that are separated by spaces only")));
-        merge.setOnAction(_ -> ooBase.guiActionMergeCitationGroups(getBaseList(), currentStyle));
+        merge.setOnAction(_ -> ooJStyleBase.guiActionMergeCitationGroups(getBaseList(), currentStyle));
 
         unmerge.setMaxWidth(Double.MAX_VALUE);
         unmerge.setTooltip(new Tooltip(Localization.lang("Separate merged citations")));
@@ -510,7 +512,14 @@ public class OpenOfficePanel {
     }
 
     private OOBibBase createBibBase(Path loPath) throws BootstrapException, CreationException, IOException, InterruptedException {
-        return new OOBibBase(loPath, dialogService, openOfficePreferences);
+        if (currentStyle instanceof JStyle) {
+            return new OOJStyleBase(loPath, dialogService, openOfficePreferences);
+        } else if (currentStyle instanceof CitationStyle) {
+            return new OOCSLBase(loPath, dialogService, openOfficePreferences);
+        } else {
+            return null;
+        }
+
     }
 
     /// Given the withText and inParenthesis options, return the corresponding citationType.
