@@ -586,6 +586,14 @@ public abstract class OOBibBase {
         return true;
     }
 
+    public void guiActionMergeCitationGroups(List<BibDatabase> databases, OOStyle style){
+        // Should never be reached during runtime
+    }
+
+    public void guiActionSeparateCitations(List<BibDatabase> databases, OOStyle style) {
+        // Should never be reached during runtime
+    }
+
     /// GUI action for "Export cited"
     ///
     /// Does not refresh the bibliography.

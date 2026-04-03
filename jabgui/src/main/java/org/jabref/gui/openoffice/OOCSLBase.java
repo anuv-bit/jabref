@@ -36,6 +36,7 @@ import com.sun.star.lang.WrappedTargetException;
 import com.sun.star.text.XTextCursor;
 import com.sun.star.text.XTextDocument;
 
+/// Subclass with JStyle specific methods from OOBibBase
 public class OOCSLBase extends OOBibBase {
 
     public OOCSLBase(Path loPath, DialogService dialogService, OpenOfficePreferences openOfficePreferences)

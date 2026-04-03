@@ -37,6 +37,7 @@ import com.sun.star.lang.WrappedTargetException;
 import com.sun.star.text.XTextCursor;
 import com.sun.star.text.XTextDocument;
 
+/// Subclass with JStyle specific methods from OOBibBase
 public class OOJStyleBase extends OOBibBase {
 
     public OOJStyleBase(Path loPath, DialogService dialogService, OpenOfficePreferences openOfficePreferences)
@@ -149,6 +150,7 @@ public class OOJStyleBase extends OOBibBase {
     }
 
     /// GUI action "Merge citations"
+    @Override
     public void guiActionMergeCitationGroups(List<BibDatabase> databases, OOStyle style) {
         final String errorTitle = Localization.lang("Problem combining cite markers");
 
@@ -195,6 +197,7 @@ public class OOJStyleBase extends OOBibBase {
     /// GUI action "Separate citations".
     ///
     /// Do the opposite of MergeCitationGroups. Combined markers are split, with a space inserted between.
+    @Override
     public void guiActionSeparateCitations(List<BibDatabase> databases, OOStyle style) {
         final String errorTitle = Localization.lang("Problem during separating cite markers");
 

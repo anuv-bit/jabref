@@ -110,9 +110,7 @@ public class OpenOfficePanel {
     private final LibraryTabContainer tabContainer;
     private final FileUpdateMonitor fileUpdateMonitor;
     private final BibEntryTypesManager entryTypesManager;
-    private OOBibBase ooBase;  // GET RID OF ************************************
-    private OOJStyleBase ooJStyleBase;
-    private OOCSLBase ooCSLBase;
+    private OOBibBase ooBase;
     private OOStyle currentStyle;
 
     private final SimpleObjectProperty<OOStyle> currentStyleProperty;
@@ -250,6 +248,8 @@ public class OpenOfficePanel {
                              } else if (currentStyle instanceof CitationStyle cslStyle) {
                                  dialogService.notify(Localization.lang("Currently selected CSL Style: '%0'", cslStyle.getName()));
                              }
+
+                             connect();
                              updateButtonAvailability();
                          });
         });
@@ -280,11 +280,11 @@ public class OpenOfficePanel {
 
         merge.setMaxWidth(Double.MAX_VALUE);
         merge.setTooltip(new Tooltip(Localization.lang("Combine pairs of citations that are separated by spaces only")));
-        merge.setOnAction(_ -> ooJStyleBase.guiActionMergeCitationGroups(getBaseList(), currentStyle));
+        merge.setOnAction(_ -> ooBase.guiActionMergeCitationGroups(getBaseList(), currentStyle));
 
         unmerge.setMaxWidth(Double.MAX_VALUE);
         unmerge.setTooltip(new Tooltip(Localization.lang("Separate merged citations")));
-        unmerge.setOnAction(_ -> ooJStyleBase.guiActionSeparateCitations(getBaseList(), currentStyle));
+        unmerge.setOnAction(_ -> ooBase.guiActionSeparateCitations(getBaseList(), currentStyle));
 
         ContextMenu settingsMenu = createSettingsPopup();
         settingsB.setMaxWidth(Double.MAX_VALUE);
