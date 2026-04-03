@@ -248,6 +248,8 @@ public class OpenOfficePanel {
                              } else if (currentStyle instanceof CitationStyle cslStyle) {
                                  dialogService.notify(Localization.lang("Currently selected CSL Style: '%0'", cslStyle.getName()));
                              }
+
+                             connect();
                              updateButtonAvailability();
                          });
         });
@@ -510,7 +512,13 @@ public class OpenOfficePanel {
     }
 
     private OOBibBase createBibBase(Path loPath) throws BootstrapException, CreationException, IOException, InterruptedException {
-        return new OOBibBase(loPath, dialogService, openOfficePreferences);
+        if (currentStyle instanceof JStyle) {
+            return new OOJStyleBase(loPath, dialogService, openOfficePreferences);
+        } else if (currentStyle instanceof CitationStyle) {
+            return new OOCSLBase(loPath, dialogService, openOfficePreferences);
+        } else {
+            return null;
+        }
     }
 
     /// Given the withText and inParenthesis options, return the corresponding citationType.
