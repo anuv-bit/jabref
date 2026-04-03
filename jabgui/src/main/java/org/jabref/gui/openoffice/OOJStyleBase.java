@@ -154,20 +154,12 @@ public class OOJStyleBase extends OOBibBase {
 
         if (style instanceof JStyle jStyle) {
             OOResult<XTextDocument, OOError> odoc = getXTextDocument();
-            if (testDialog(errorTitle,
-                    odoc.asVoidResult(),
-                    styleIsRequired(jStyle),
-                    databaseIsRequired(databases, OOError::noDataBaseIsOpen))) {
-                return;
-            }
+
             XTextDocument doc = odoc.get();
 
             OOResult<FunctionalTextViewCursor, OOError> fcursor = getFunctionalTextViewCursor(doc, errorTitle);
 
-            if (testDialog(errorTitle,
-                    fcursor.asVoidResult(),
-                    checkStylesExistInTheDocument(jStyle, doc),
-                    checkIfOpenOfficeIsRecordingChanges(doc))) {
+            if (!performPreMergeSeparateChecks(databases, errorTitle, odoc, jStyle, fcursor, doc)) {
                 return;
             }
 
@@ -207,21 +199,14 @@ public class OOJStyleBase extends OOBibBase {
         final String errorTitle = Localization.lang("Problem during separating cite markers");
 
         if (style instanceof JStyle jStyle) {
+
             OOResult<XTextDocument, OOError> odoc = getXTextDocument();
-            if (testDialog(errorTitle,
-                    odoc.asVoidResult(),
-                    styleIsRequired(jStyle),
-                    databaseIsRequired(databases, OOError::noDataBaseIsOpen))) {
-                return;
-            }
 
             XTextDocument doc = odoc.get();
+
             OOResult<FunctionalTextViewCursor, OOError> fcursor = getFunctionalTextViewCursor(doc, errorTitle);
 
-            if (testDialog(errorTitle,
-                    fcursor.asVoidResult(),
-                    checkStylesExistInTheDocument(jStyle, doc),
-                    checkIfOpenOfficeIsRecordingChanges(doc))) {
+            if (!performPreMergeSeparateChecks(databases, errorTitle, odoc, jStyle, fcursor, doc)) {
                 return;
             }
 
@@ -252,6 +237,32 @@ public class OOJStyleBase extends OOBibBase {
                 fcursor.get().restore(doc);
             }
         }
+    }
+
+    /// Helper method for guiActionInsertEntry. Handles pre-insertion checks
+    ///
+    /// @param databases  Requires at least one
+    /// @param jStyle     JStyle object
+    /// @param errorTitle Message String of error
+    /// @param odoc       Open Office text document result
+    /// @param fcursor    Open Office result of functional text view cursor
+    /// @param doc        Text document
+    public boolean performPreMergeSeparateChecks(List<BibDatabase> databases, String errorTitle, OOResult<XTextDocument, OOError> odoc, JStyle jStyle,
+                                                 OOResult<FunctionalTextViewCursor, OOError> fcursor, XTextDocument doc) {
+        if (testDialog(errorTitle,
+                odoc.asVoidResult(),
+                styleIsRequired(jStyle),
+                databaseIsRequired(databases, OOError::noDataBaseIsOpen))) {
+            return false;
+        }
+
+        if (testDialog(errorTitle,
+                fcursor.asVoidResult(),
+                checkStylesExistInTheDocument(jStyle, doc),
+                checkIfOpenOfficeIsRecordingChanges(doc))) {
+            return false;
+        }
+        return true;
     }
 
     /// GUI action, refreshes citation markers and bibliography.
