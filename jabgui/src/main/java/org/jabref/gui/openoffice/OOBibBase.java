@@ -586,7 +586,7 @@ public abstract class OOBibBase {
         return true;
     }
 
-    public void guiActionMergeCitationGroups(List<BibDatabase> databases, OOStyle style){
+    public void guiActionMergeCitationGroups(List<BibDatabase> databases, OOStyle style) {
         // Should never be reached during runtime
     }
 

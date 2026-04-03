@@ -242,7 +242,7 @@ public class OOJStyleBase extends OOBibBase {
         }
     }
 
-    /// Helper method for guiActionInsertEntry. Handles pre-insertion checks
+    /// Helper method for guiActionMergeCitations and guiActionSeparateCitations. Handles checks.
     ///
     /// @param databases  Requires at least one
     /// @param jStyle     JStyle object
