@@ -11,6 +11,7 @@ import org.jabref.logic.l10n.Localization;
 import org.jabref.logic.openoffice.OpenOfficePreferences;
 import org.jabref.logic.openoffice.action.EditInsert;
 import org.jabref.logic.openoffice.action.EditMerge;
+import org.jabref.logic.openoffice.action.EditSeparate;
 import org.jabref.logic.openoffice.action.Update;
 import org.jabref.logic.openoffice.frontend.OOFrontend;
 import org.jabref.logic.openoffice.style.JStyle;
@@ -100,7 +101,6 @@ public class OOJStyleBase extends OOBibBase {
             if (style instanceof JStyle jstyle) {
                 insertJStyleCitation(entries, doc, citationType, jstyle, frontend, cursor, bibDatabaseContext, syncOptions, pageInfo, fcursor);
             }
-
         } catch (NoDocumentException ex) {
             OOError.from(ex).setTitle(errorTitle).showErrorDialog(super.getDialogService());
         } catch (DisposedException ex) {
@@ -110,10 +110,10 @@ public class OOJStyleBase extends OOBibBase {
                  | PropertyVetoException
                  | IllegalTypeException
                  | NotRemoveableException ex) {
-            getLogger().warn("Could not insert entry", ex);
+            getLOGGER().warn("Could not insert entry", ex);
             OOError.fromMisc(ex).setTitle(errorTitle).showErrorDialog(super.getDialogService());
         } catch (com.sun.star.uno.Exception e) {
-            getLogger().error("Could not insert entry", e);
+            getLOGGER().error("Could not insert entry", e);
             OOError.fromMisc(e).setTitle(errorTitle).showErrorDialog(super.getDialogService());
         } finally {
             UnoUndo.leaveUndoContext(doc);
@@ -191,7 +191,7 @@ public class OOJStyleBase extends OOBibBase {
                      | PropertyVetoException
                      | WrappedTargetException
                      | com.sun.star.lang.IllegalArgumentException ex) {
-                getLogger().warn(errorTitle, ex);
+                getLOGGER().warn(errorTitle, ex);
                 OOError.fromMisc(ex).setTitle(errorTitle).showErrorDialog(super.getDialogService());
             } finally {
                 UnoUndo.leaveUndoContext(doc);
@@ -199,4 +199,125 @@ public class OOJStyleBase extends OOBibBase {
             }
         }
     } // MergeCitationGroups
+
+    /// GUI action "Separate citations".
+    ///
+    /// Do the opposite of MergeCitationGroups. Combined markers are split, with a space inserted between.
+    public void guiActionSeparateCitations(List<BibDatabase> databases, OOStyle style) {
+        final String errorTitle = Localization.lang("Problem during separating cite markers");
+
+        if (style instanceof JStyle jStyle) {
+            OOResult<XTextDocument, OOError> odoc = getXTextDocument();
+            if (testDialog(errorTitle,
+                    odoc.asVoidResult(),
+                    styleIsRequired(jStyle),
+                    databaseIsRequired(databases, OOError::noDataBaseIsOpen))) {
+                return;
+            }
+
+            XTextDocument doc = odoc.get();
+            OOResult<FunctionalTextViewCursor, OOError> fcursor = getFunctionalTextViewCursor(doc, errorTitle);
+
+            if (testDialog(errorTitle,
+                    fcursor.asVoidResult(),
+                    checkStylesExistInTheDocument(jStyle, doc),
+                    checkIfOpenOfficeIsRecordingChanges(doc))) {
+                return;
+            }
+
+            try {
+                UnoUndo.enterUndoContext(doc, "Separate citations");
+
+                OOFrontend frontend = new OOFrontend(doc);
+                boolean madeModifications = EditSeparate.separateCitations(doc, frontend, databases, jStyle);
+                if (madeModifications) {
+                    UnoCrossRef.refresh(doc);
+                    Update.SyncOptions syncOptions = new Update.SyncOptions(databases);
+                    Update.resyncDocument(doc, jStyle, fcursor.get(), syncOptions);
+                }
+            } catch (NoDocumentException ex) {
+                OOError.from(ex).setTitle(errorTitle).showErrorDialog(super.getDialogService());
+            } catch (DisposedException ex) {
+                OOError.from(ex).setTitle(errorTitle).showErrorDialog(super.getDialogService());
+            } catch (CreationException
+                     | IllegalTypeException
+                     | NotRemoveableException
+                     | PropertyVetoException
+                     | WrappedTargetException
+                     | com.sun.star.lang.IllegalArgumentException ex) {
+                getLOGGER().warn(errorTitle, ex);
+                OOError.fromMisc(ex).setTitle(errorTitle).showErrorDialog(super.getDialogService());
+            } finally {
+                UnoUndo.leaveUndoContext(doc);
+                fcursor.get().restore(doc);
+            }
+        }
+    }
+
+    /// GUI action, refreshes citation markers and bibliography.
+    ///
+    /// @param databases Must have at least one.
+    /// @param style     Style.
+    public void guiActionUpdateDocument(List<BibDatabase> databases, OOStyle style) {
+        final String errorTitle = Localization.lang("Unable to synchronize bibliography");
+
+        OOResult<XTextDocument, OOError> odoc = getXTextDocument();
+        XTextDocument doc = odoc.get();
+        OOResult<FunctionalTextViewCursor, OOError> fcursor = getFunctionalTextViewCursor(doc, errorTitle);
+        OOResult<OOFrontend, OOError> frontend = getFrontend(doc);
+
+        if (!performPreUpdateChecks(errorTitle, odoc, style, getFrontend(doc), fcursor, doc)) {
+            return;
+        }
+
+        if (style instanceof JStyle jStyle) {
+            try {
+
+                updateJStyleBibliography(databases, jStyle, doc, frontend.get(), fcursor, errorTitle);
+            } catch (NoDocumentException ex) {
+                OOError.from(ex).setTitle(errorTitle).showErrorDialog(super.getDialogService());
+            } catch (DisposedException ex) {
+                OOError.from(ex).setTitle(errorTitle).showErrorDialog(super.getDialogService());
+            } catch (CreationException
+                     | WrappedTargetException
+                     | com.sun.star.lang.IllegalArgumentException ex) {
+                getLOGGER().warn("Could not update JStyle bibliography", ex);
+                OOError.fromMisc(ex).setTitle(errorTitle).showErrorDialog(super.getDialogService());
+            }
+        }
+    }
+
+    /// Helper method for guiActionUpdateDocument, refreshes a JStyle bibliography.
+    ///
+    /// @param databases        Must have at least one.
+    /// @param jStyle           Indicates citation formating in JStyle.
+    /// @param doc              Text document.
+    /// @param frontend,fcursor Used to synchronize document.
+    /// @param errorTitle       Error message for user.
+    private void updateJStyleBibliography(List<BibDatabase> databases, JStyle jStyle, XTextDocument doc, OOFrontend frontend,
+                                          OOResult<FunctionalTextViewCursor, OOError> fcursor, String errorTitle)
+            throws CreationException, NoDocumentException, WrappedTargetException {
+        List<String> unresolvedKeys;
+        try {
+            UnoUndo.enterUndoContext(doc, "Refresh bibliography");
+
+            Update.SyncOptions syncOptions = new Update.SyncOptions(databases);
+            syncOptions
+                    .setUpdateBibliography(true)
+                    .setAlwaysAddCitedOnPages(super.getOpenOfficePreferences().getAlwaysAddCitedOnPages());
+
+            unresolvedKeys = Update.synchronizeDocument(doc, frontend, jStyle, fcursor.get(), syncOptions);
+        } finally {
+            UnoUndo.leaveUndoContext(doc);
+            fcursor.get().restore(doc);
+        }
+
+        if (!unresolvedKeys.isEmpty()) {
+            String msg = Localization.lang(
+                    "Your OpenOffice/LibreOffice document references the citation key '%0',"
+                            + " which could not be found in your current library.",
+                    unresolvedKeys.getFirst());
+            super.getDialogService().showErrorDialogAndWait(errorTitle, msg);
+        }
+    }
 }

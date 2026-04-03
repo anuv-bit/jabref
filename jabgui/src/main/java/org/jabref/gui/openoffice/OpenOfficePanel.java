@@ -284,7 +284,7 @@ public class OpenOfficePanel {
 
         unmerge.setMaxWidth(Double.MAX_VALUE);
         unmerge.setTooltip(new Tooltip(Localization.lang("Separate merged citations")));
-        unmerge.setOnAction(_ -> ooBase.guiActionSeparateCitations(getBaseList(), currentStyle));
+        unmerge.setOnAction(_ -> ooJStyleBase.guiActionSeparateCitations(getBaseList(), currentStyle));
 
         ContextMenu settingsMenu = createSettingsPopup();
         settingsB.setMaxWidth(Double.MAX_VALUE);
@@ -519,7 +519,6 @@ public class OpenOfficePanel {
         } else {
             return null;
         }
-
     }
 
     /// Given the withText and inParenthesis options, return the corresponding citationType.
